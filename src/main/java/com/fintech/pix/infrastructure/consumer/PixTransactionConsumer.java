@@ -33,61 +33,57 @@ public class PixTransactionConsumer {
 
 
     @KafkaListener(topics = "${app.kafka.topics.pix-requested}", groupId = "${spring.kafka.consumer.group-id}")
+    @Transactional
     @SneakyThrows
     public void consumeTransaction(String message, Acknowledgment ack) {
-
         PartnerIntegrationEvent event = objectMapper.readValue(message, PartnerIntegrationEvent.class);
         String txId = event.getTransactionId();
 
-        log.info("Processing Kafka event for transactionId: {}", txId);
+        log.info("Received Kafka event for transactionId: {}", txId);
 
-        // Lock de Idempotência
-        Boolean lockAcquired = redisTemplate.opsForValue().setIfAbsent(REDIS_LOCK_PREFIX + txId, "LOCKED", Duration.ofSeconds(30));
+        // 1. Idempotência via Redis Lock
+        Boolean lockAcquired = redisTemplate.opsForValue().setIfAbsent(
+                REDIS_LOCK_PREFIX + txId,
+                "LOCKED",
+                Duration.ofSeconds(30)
+        );
 
         if (Boolean.FALSE.equals(lockAcquired)) {
-            log.warn("TransactionId {} locked by another worker. Skipping.", txId);
-            ack.acknowledge();
+            log.warn("TransactionId {} is already being processed. Skipping.", txId);
+            ack.acknowledge(); // Comita offset para liberar a mensagem duplicada
             return;
         }
 
         try {
             PixTransaction transaction = transactionRepository.findById(txId).orElse(null);
-
             if (transaction != null && transaction.getStatus() != TransactionStatus.PROCESSING) {
-                log.info("Transaction {} already finalized with status {}. Skipping.", txId, transaction.getStatus());
+                log.info("Transaction {} already has final status {}. Skipping.", txId, transaction.getStatus());
                 ack.acknowledge();
                 return;
             }
 
-            // 1. Chamada ao Parceiro
+            // 2. Chamada protegida ao Mock via Resilience4j
             boolean partnerApproved = partnerBankClient.processTransaction(event).get();
 
-            // 2. Tratamento do Retorno (true ou false)
             TransactionStatus finalStatus = partnerApproved ? TransactionStatus.SUCCESS : TransactionStatus.FAILED;
-            updateStatus(transaction, txId, finalStatus);
 
-            // 3. Confirmar mensagem no Kafka APENAS APÓS sucesso garantido
-            ack.acknowledge();
-            log.info("TransactionId {} successfully consumed and offset committed.", txId);
-
-        } catch (Exception ex) {
-            // 4. Tratamento das Exceções (Timeout, Resilience4j, Erro de Infra)
-            log.error("Integration failure for transactionId: {}. Will retry via DefaultErrorHandler.", txId, ex);
-
-            // Marcar como FAILED de forma explícita (fora de @Transactional para garantir persistência)
-            try {
-                PixTransaction transaction = transactionRepository.findById(txId).orElse(null);
-                updateStatus(transaction, txId, TransactionStatus.FAILED);
-                log.info("TransactionId {} status updated to FAILED in database.", txId);
-            } catch (Exception statusEx) {
-                log.error("Failed to update transaction status for {}", txId, statusEx);
+            if (transaction != null) {
+                transaction.setStatus(finalStatus);
+                transactionRepository.save(transaction);
             }
 
-            // NÃO fazer ack.acknowledge(). DefaultErrorHandler tentará 2 vezes antes de enviar para DLQ
-            throw new RuntimeException("Partner integration exception for transaction: " + txId, ex);
+            redisTemplate.opsForValue().set(
+                    REDIS_STATUS_PREFIX + txId,
+                    finalStatus.name(),
+                    Duration.ofHours(24)
+            );
+
+            log.info("TransactionId {} updated to status {}", txId, finalStatus);
+
+            // 3. CONFIRMAÇÃO MANUAL DE PROCESSAMENTO (ACK)
+            ack.acknowledge();
 
         } finally {
-            // Apenas limpar o lock. NÃO fazer acknowledge aqui
             redisTemplate.delete(REDIS_LOCK_PREFIX + txId);
         }
     }
@@ -95,19 +91,7 @@ public class PixTransactionConsumer {
 
 
 
-    private void updateStatus(PixTransaction transaction, String txId, TransactionStatus status) {
 
-        if (transaction != null) {
-            transaction.setStatus(status);
-            transactionRepository.save(transaction);
-        }
-        redisTemplate.opsForValue().set(
-                REDIS_STATUS_PREFIX + txId,
-                status.name(),
-                Duration.ofHours(24)
-        );
-        log.info("TransactionId {} updated to status {}", txId, status);
-    }
 
 
 
