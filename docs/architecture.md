@@ -180,6 +180,7 @@ A solução contempla:
 # 11. Evoluções Futuras
 
 - Kubernetes;
+- Observabilidade avançada;
 - Schema Registry;
 - Dashboards Grafana;
 - Rate Limiting;
