@@ -1,39 +1,58 @@
+# Diagrama da arquitetura proposta
+
 ```mermaid
 flowchart LR
+    Client[Cliente / Integrador]
 
-    Client[Cliente]
+    subgraph Entrada[Camada de entrada]
+        API[Spring Boot API]
+    end
 
-    API[PIX API]
+    subgraph Persistencia[Persistência e consistência]
+        DB[(PostgreSQL)]
+        Outbox[(Tabela de Outbox)]
+        Cache[(Redis)]
+    end
 
-    DB[(PostgreSQL)]
+    subgraph Mensageria[Mensageria e entrega]
+        Publisher[Outbox Publisher]
+        Kafka[(Apache Kafka)]
+        DLQ[(Dead Letter Queue)]
+    end
 
-    Outbox[(Outbox)]
+    subgraph Processamento[Processamento assíncrono]
+        Consumer[PIX Consumer]
+        Resilience[Resilience4j<br/>Retry / Circuit Breaker / TimeLimiter]
+        Partner[Instituição Financeira]
+    end
 
-    Publisher[Outbox Publisher]
-
-    Kafka[(Apache Kafka)]
-
-    Consumer[PIX Consumer]
-
-    Partner[Instituição Financeira]
+    subgraph Observabilidade[Observabilidade]
+        Metrics[Micrometer / Prometheus]
+        Logs[Logs estruturados]
+        Tracing[Tracing distribuído]
+    end
 
     Client -->|POST /pix| API
-
-    API -->|Persistência| DB
-
-    API -->|Grava Evento| Outbox
-
-    Outbox --> Publisher
-
-    Publisher -->|Publica Evento| Kafka
-
-    Kafka -->|Consome Evento| Consumer
-
-    Consumer -->|Processa PIX| Partner
-
-    Consumer -->|Atualiza Status| DB
-
     Client -->|GET /pix/{id}| API
 
-    API --> DB
+    API -->|Persiste transação| DB
+    API -->|Registra evento na outbox| Outbox
+    API -->|Consulta status| DB
+
+    Outbox --> Publisher
+    Publisher -->|Publica evento| Kafka
+
+    Kafka -->|Consome mensagem| Consumer
+    Consumer -->|Aplica políticas de resiliência| Resilience
+    Resilience -->|Chamada externa| Partner
+    Consumer -->|Atualiza status| DB
+    Consumer -->|Cache de leitura| Cache
+    Consumer -->|Falha persistida| DLQ
+
+    API --> Metrics
+    Consumer --> Metrics
+    API --> Logs
+    Consumer --> Logs
+    API --> Tracing
+    Consumer --> Tracing
 ```

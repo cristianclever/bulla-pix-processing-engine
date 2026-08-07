@@ -74,4 +74,5 @@ src
 ## Documentação
 
 - docs/architecture.md
+- docs/diagram.md
 - docs/decisions.md
