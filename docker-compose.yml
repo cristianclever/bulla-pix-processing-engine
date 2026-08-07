@@ -31,6 +31,17 @@ services:
       timeout: 5s
       retries: 5
 
+  kafdrop:
+    image: obsidiandynamics/kafdrop:latest
+    container_name: bank_kafdrop    
+    depends_on:
+      - broker
+    ports:
+      - 19000:9000
+    environment:
+      KAFKA_BROKERCONNECT: broker:29092
+
+
   postgres:
     image: postgres:16-alpine
     container_name: bank_postgres
