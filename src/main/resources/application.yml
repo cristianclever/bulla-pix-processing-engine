@@ -1,0 +1,119 @@
+spring:
+  application:
+    name: pix-processing-engine
+
+  # Habilita Virtual Threads (Java 21) para operações de I/O de alta concorrência
+  threads:
+    virtual:
+      enabled: true
+
+  # Configuração de conexão com o PostgreSQL
+  datasource:
+    url: jdbc:postgresql://localhost:5432/bank_db
+    username: bank_user
+    password: bank_password
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+
+  # Configuração JPA / Hibernate
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+  # Configuração de conexão com o Redis Cache
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
+  # Configuração do Apache Kafka
+  # Configuração do Apache Kafka
+  kafka:
+    bootstrap-servers: localhost:9092
+    consumer:
+      group-id: pix-processing-group
+      auto-offset-reset: earliest
+      enable-auto-commit: false # Desabilita o auto-commit para usarmos Ack manual
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+    producer:
+      acks: all # Garante que o Leader e TODAS as réplicas em sintonia (ISR) confirmem o recebimento
+      retries: 3 # Tentativas automáticas de reenvio em nível de rede/driver
+      properties:
+        enable.idempotence: true # Impede duplicação de mensagens produzidas pela mesma instância
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+    listener:
+      concurrency: 6 # 6 threads leitoras em paralelo (1 por partição do tópico)
+      ack-mode: manual_immediate # O consumidor comita o offset no Kafka imediatamente ao chamar o Acknowledgment.acknowledge()
+
+server:
+  port: 8080
+
+# Padronização do formato dos logs para exibir o TraceID e SpanID
+logging:
+  pattern:
+    level: "%5p [${spring.application.name:},%X{traceId:-},%X{spanId:-}]"
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics
+  prometheus:
+    metrics:
+      export:
+        enabled: true
+  tracing:
+    sampling:
+      probability: 1.0 # 1.0 = 100% das requisições rastreadas (gera traceId no MDC)
+
+resilience4j:
+  # 1. Configuração do TimeLimiter
+  timelimiter:
+    instances:
+      partnerBank:
+        timeout-duration: 4000ms # Se o parceiro demorar mais de 4s, interrompe
+        cancel-running-future: true
+
+  # 2. Configuração do Retry
+  retry:
+    instances:
+      partnerBank:
+        max-attempts: 3 # No máximo 2 tentativas (1 original + 1 retry)
+        wait-duration: 1000ms # Aguarda 500ms entre as tentativas
+        retry-exceptions:
+          - java.lang.RuntimeException
+
+  # 3. Configuração do Circuit Breaker
+  circuitbreaker:
+    instances:
+      partnerBank:
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 20 # Avalia as últimas 20 chamadas
+        minimum-number-of-calls: 5 # Exige pelo menos 5 chamadas para calcular a taxa
+        failure-rate-threshold: 50 # Se 50% das chamadas falharem, ABRE o circuito
+        wait-duration-in-open-state: 10000ms # Fica 10s ABERTO (bloqueando requisições) antes de testar recuperação (HALF-OPEN)
+        permitted-number-of-calls-in-half-open-state: 3
+        automatic-transition-from-open-to-half-open-enabled: true
+
+# Configurações customizadas do Outbox Publisher
+outbox:
+  publisher:
+    fixed-delay-ms: 500
+    batch-size: 50
+
+# Mapeamento dos nomes dos Tópicos Kafka
+app:
+  kafka:
+    topics:
+      pix-requested: pix-transactions-requested
+      pix-requested-retry: pix-transactions-requested-retry
+      pix-requested-dlq: pix-transactions-requested-dlq
