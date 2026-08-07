@@ -13,6 +13,7 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
@@ -83,10 +84,35 @@ public class PixTransactionConsumer {
             // 3. CONFIRMAÇÃO MANUAL DE PROCESSAMENTO (ACK)
             ack.acknowledge();
 
+        } catch (Exception e) {
+            markTransactionAsFailed(txId);
+            redisTemplate.opsForValue().set(
+                    REDIS_STATUS_PREFIX + txId,
+                    TransactionStatus.FAILED.name(),
+                    Duration.ofHours(24)
+            );
+            log.error("Error processing transaction {}. Marked as FAILED and rethrowing for DLQ.", txId, e);
+            throw e;
         } finally {
             redisTemplate.delete(REDIS_LOCK_PREFIX + txId);
         }
     }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void markTransactionAsFailed(String txId) {
+        PixTransaction transaction = transactionRepository.findById(txId).orElse(null);
+        if (transaction == null) {
+            log.warn("Transaction {} not found in database; skipping DB status update.", txId);
+            return;
+        }
+
+        transaction.setStatus(TransactionStatus.FAILED);
+        transactionRepository.save(transaction);
+        log.info("TransactionId {} marked as FAILED in Postgres", txId);
+    }
+
+
+
 
 
 

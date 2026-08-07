@@ -80,15 +80,15 @@ resilience4j:
   timelimiter:
     instances:
       partnerBank:
-        timeout-duration: 4000ms # Se o parceiro demorar mais de 4s, interrompe
+        timeout-duration: 3500ms # Se o parceiro demorar mais de 3.5s, interrompe
         cancel-running-future: true
 
   # 2. Configuração do Retry
   retry:
     instances:
       partnerBank:
-        max-attempts: 3 # No máximo 2 tentativas (1 original + 1 retry)
-        wait-duration: 1000ms # Aguarda 500ms entre as tentativas
+        max-attempts: 2 # No máximo 2 tentativas (1 original + 1 retry)
+        wait-duration: 500ms # Aguarda 500ms entre as tentativas
         retry-exceptions:
           - java.lang.RuntimeException
 
