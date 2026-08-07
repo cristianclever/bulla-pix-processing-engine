@@ -75,4 +75,5 @@ src
 
 - docs/architecture.md
 - docs/diagram.md
+- docs/diagram.html
 - docs/decisions.md
