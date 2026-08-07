@@ -1,58 +1,49 @@
 # Diagrama da arquitetura proposta
 
 ```mermaid
-flowchart LR
-    Client[Cliente / Integrador]
-
-    subgraph Entrada[Camada de entrada]
-        API[Spring Boot API]
+flowchart TD
+    subgraph entry[Camada de entrada]
+        user[Cliente / Integrador]
+        api[API Spring Boot]
     end
 
-    subgraph Persistencia[Persistência e consistência]
-        DB[(PostgreSQL)]
-        Outbox[(Tabela de Outbox)]
-        Cache[(Redis)]
+    subgraph data[Persistencia e consistencia]
+        db[(PostgreSQL)]
+        outbox[(Tabela Outbox)]
+        cache[(Redis)]
     end
 
-    subgraph Mensageria[Mensageria e entrega]
-        Publisher[Outbox Publisher]
-        Kafka[(Apache Kafka)]
-        DLQ[(Dead Letter Queue)]
+    subgraph messaging[Mensageria e entrega]
+        publisher[Outbox Publisher]
+        kafka[(Apache Kafka)]
+        dlq[(Dead Letter Queue)]
     end
 
-    subgraph Processamento[Processamento assíncrono]
-        Consumer[PIX Consumer]
-        Resilience[Resilience4j<br/>Retry / Circuit Breaker / TimeLimiter]
-        Partner[Instituição Financeira]
+    subgraph processing[Processamento assinc]
+        consumer[PIX Consumer]
+        partner[Instituicao Financeira]
     end
 
-    subgraph Observabilidade[Observabilidade]
-        Metrics[Micrometer / Prometheus]
-        Logs[Logs estruturados]
-        Tracing[Tracing distribuído]
+    subgraph ops[Observabilidade]
+        metrics[Micrometer / Prometheus]
     end
 
-    Client -->|POST /pix| API
-    Client -->|GET /pix/{id}| API
+    user -->|POST /pix| api
+    user -->|GET /pix/{id}| api
 
-    API -->|Persiste transação| DB
-    API -->|Registra evento na outbox| Outbox
-    API -->|Consulta status| DB
+    api -->|Persiste transacao| db
+    api -->|Registra evento| outbox
+    api -->|Consulta status| db
 
-    Outbox --> Publisher
-    Publisher -->|Publica evento| Kafka
+    outbox --> publisher
+    publisher -->|Publica mensagem| kafka
 
-    Kafka -->|Consome mensagem| Consumer
-    Consumer -->|Aplica políticas de resiliência| Resilience
-    Resilience -->|Chamada externa| Partner
-    Consumer -->|Atualiza status| DB
-    Consumer -->|Cache de leitura| Cache
-    Consumer -->|Falha persistida| DLQ
+    kafka -->|Consome evento| consumer
+    consumer -->|Atualiza status| db
+    consumer -->|Leitura cache| cache
+    consumer -->|Falha persistida| dlq
+    consumer -->|Processa PIX| partner
 
-    API --> Metrics
-    Consumer --> Metrics
-    API --> Logs
-    Consumer --> Logs
-    API --> Tracing
-    Consumer --> Tracing
+    api --> metrics
+    consumer --> metrics
 ```
