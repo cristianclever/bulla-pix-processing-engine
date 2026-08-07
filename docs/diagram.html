@@ -3,86 +3,74 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Diagrama da Arquitetura Proposta</title>
+  <title>Diagrama da Arquitetura Proposta - Versão 2</title>
   <style>
     body {
       font-family: Arial, Helvetica, sans-serif;
-      background: #f5f7fb;
-      color: #1f2937;
+      background: #f8fafc;
       margin: 0;
       padding: 24px;
+      color: #0f172a;
     }
-
     .container {
-      max-width: 1200px;
+      max-width: 1100px;
       margin: 0 auto;
       background: white;
-      border-radius: 16px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+      border-radius: 18px;
       padding: 24px;
+      box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
     }
-
     h1 {
       margin-top: 0;
-      color: #111827;
       text-align: center;
+      color: #111827;
     }
-
     .subtitle {
       text-align: center;
-      color: #6b7280;
-      margin-bottom: 24px;
+      color: #64748b;
+      margin-bottom: 20px;
     }
-
     svg {
       width: 100%;
       height: auto;
       display: block;
-      margin: 0 auto;
     }
-
-    .box {
+    .title-box {
+      fill: #2563eb;
+      color: white;
+    }
+    .step-box {
       fill: #ffffff;
-      stroke: #2563eb;
-      stroke-width: 2;
-      rx: 14;
-      ry: 14;
-    }
-
-    .box-alt {
-      fill: #eff6ff;
-      stroke: #1d4ed8;
-      stroke-width: 2;
-      rx: 14;
-      ry: 14;
-    }
-
-    .group {
-      fill: #f8fafc;
       stroke: #cbd5e1;
-      stroke-width: 1.5;
+      stroke-width: 2;
       rx: 12;
       ry: 12;
     }
-
-    .title {
-      font-size: 16px;
-      font-weight: 700;
-      fill: #111827;
+    .step-box-blue {
+      fill: #eff6ff;
+      stroke: #60a5fa;
+      stroke-width: 2;
+      rx: 12;
+      ry: 12;
     }
-
-    .label {
-      font-size: 13px;
-      fill: #374151;
+    .step-box-green {
+      fill: #ecfdf5;
+      stroke: #34d399;
+      stroke-width: 2;
+      rx: 12;
+      ry: 12;
     }
-
-    .small {
+    .step-text {
+      fill: #0f172a;
+      font-size: 14px;
+      font-weight: 600;
+    }
+    .step-sub {
+      fill: #64748b;
       font-size: 12px;
-      fill: #6b7280;
     }
-
     .arrow {
-      stroke: #4b5563;
+      stroke: #475569;
       stroke-width: 2.2;
       fill: none;
       marker-end: url(#arrowhead);
@@ -91,76 +79,63 @@
 </head>
 <body>
   <div class="container">
-    <h1>Diagrama da Arquitetura Proposta</h1>
-    <p class="subtitle">Fluxo assíncrono de processamento de transações PIX</p>
+    <h1>Arquitetura proposta para processamento PIX</h1>
+    <p class="subtitle">Fluxo simples, assíncrono e escalável</p>
 
-    <svg viewBox="0 0 1100 720" xmlns="http://www.w3.org/2000/svg">
+    <svg viewBox="0 0 980 520" xmlns="http://www.w3.org/2000/svg">
       <defs>
-        <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-          <polygon points="0 0, 10 3.5, 0 7" fill="#4b5563"></polygon>
+        <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="8" refY="3.5" orient="auto">
+          <polygon points="0 0, 10 3.5, 0 7" fill="#475569"></polygon>
         </marker>
       </defs>
 
-      <rect x="40" y="40" width="1020" height="640" class="group" />
-      <text x="70" y="78" class="title">Arquitetura proposta</text>
+      <rect x="40" y="40" width="900" height="440" rx="18" ry="18" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1.5"/>
 
-      <rect x="90" y="120" width="220" height="180" class="group" />
-      <text x="110" y="152" class="title">Camada de entrada</text>
-      <rect x="120" y="175" width="160" height="54" class="box" />
-      <text x="150" y="208" class="label">Cliente / Integrador</text>
-      <rect x="120" y="245" width="160" height="54" class="box-alt" />
-      <text x="170" y="278" class="label">API Spring Boot</text>
+      <rect x="80" y="90" width="180" height="72" rx="14" ry="14" class="step-box-blue"/>
+      <text x="170" y="122" text-anchor="middle" class="step-text">Cliente</text>
+      <text x="170" y="143" text-anchor="middle" class="step-sub">Envio da transação</text>
 
-      <rect x="380" y="120" width="300" height="180" class="group" />
-      <text x="400" y="152" class="title">Persistência e consistência</text>
-      <rect x="410" y="175" width="140" height="54" class="box" />
-      <text x="445" y="208" class="label">PostgreSQL</text>
-      <rect x="410" y="245" width="140" height="54" class="box" />
-      <text x="455" y="278" class="label">Outbox</text>
-      <rect x="570" y="175" width="90" height="54" class="box" />
-      <text x="595" y="208" class="label">Redis</text>
+      <line x1="260" y1="126" x2="330" y2="126" class="arrow"/>
 
-      <rect x="730" y="120" width="280" height="180" class="group" />
-      <text x="750" y="152" class="title">Mensageria e entrega</text>
-      <rect x="760" y="175" width="140" height="54" class="box" />
-      <text x="780" y="208" class="label">Outbox Publisher</text>
-      <rect x="760" y="245" width="140" height="54" class="box" />
-      <text x="800" y="278" class="label">Kafka</text>
-      <rect x="920" y="175" width="70" height="54" class="box" />
-      <text x="930" y="208" class="label">DLQ</text>
+      <rect x="330" y="90" width="180" height="72" rx="14" ry="14" class="step-box-blue"/>
+      <text x="420" y="122" text-anchor="middle" class="step-text">API Spring Boot</text>
+      <text x="420" y="143" text-anchor="middle" class="step-sub">Recebe e valida</text>
 
-      <rect x="300" y="380" width="420" height="220" class="group" />
-      <text x="320" y="412" class="title">Processamento assíncrono</text>
-      <rect x="335" y="440" width="180" height="54" class="box-alt" />
-      <text x="380" y="473" class="label">PIX Consumer</text>
-      <rect x="535" y="440" width="150" height="54" class="box" />
-      <text x="565" y="473" class="label">Instituição</text>
-      <text x="555" y="493" class="small">Financeira</text>
+      <line x1="510" y1="126" x2="580" y2="126" class="arrow"/>
 
-      <rect x="760" y="380" width="220" height="120" class="group" />
-      <text x="780" y="412" class="title">Observabilidade</text>
-      <rect x="780" y="430" width="180" height="54" class="box" />
-      <text x="815" y="463" class="label">Micrometer / Prometheus</text>
+      <rect x="580" y="90" width="185" height="72" rx="14" ry="14" class="step-box"/>
+      <text x="670" y="122" text-anchor="middle" class="step-text">PostgreSQL</text>
+      <text x="670" y="143" text-anchor="middle" class="step-sub">Persiste transação - cache REDIS</text>
 
-      <line x1="280" y1="202" x2="410" y2="202" class="arrow" />
-      <line x1="280" y1="272" x2="410" y2="272" class="arrow" />
-      <line x1="550" y1="202" x2="760" y2="202" class="arrow" />
-      <line x1="900" y1="202" x2="920" y2="202" class="arrow" />
+      <line x1="670" y1="162" x2="670" y2="220" class="arrow"/>
 
-      <line x1="515" y1="460" x2="535" y2="460" class="arrow" />
-      <line x1="685" y1="460" x2="760" y2="460" class="arrow" />
-      <line x1="280" y1="272" x2="300" y2="440" class="arrow" />
-      <line x1="335" y1="467" x2="280" y2="467" class="arrow" />
+      <rect x="580" y="220" width="180" height="72" rx="14" ry="14" class="step-box"/>
+      <text x="670" y="252" text-anchor="middle" class="step-text">Outbox</text>
+      <text x="670" y="273" text-anchor="middle" class="step-sub">Registra evento</text>
 
-      <path d="M 415 229 C 360 260, 320 320, 320 440" class="arrow" />
-      <path d="M 515 229 C 620 260, 690 310, 685 440" class="arrow" />
-      <path d="M 780 460 C 760 460, 730 460, 690 460" class="arrow" />
+      <line x1="670" y1="292" x2="670" y2="350" class="arrow"/>
 
-      <text x="120" y="330" class="label">POST /pix</text>
-      <text x="390" y="330" class="label">Persiste transação</text>
-      <text x="650" y="330" class="label">Publica evento</text>
-      <text x="540" y="520" class="label">Processa pagamento</text>
-      <text x="760" y="520" class="label">Métricas</text>
+      <rect x="580" y="350" width="180" height="72" rx="14" ry="14" class="step-box-blue"/>
+      <text x="670" y="382" text-anchor="middle" class="step-text">Kafka</text>
+      <text x="670" y="403" text-anchor="middle" class="step-sub">Publica e distribui</text>
+
+      <line x1="760" y1="386" x2="830" y2="386" class="arrow"/>
+
+      <rect x="830" y="350" width="150" height="72" rx="14" ry="14" class="step-box-green"/>
+      <text x="890" y="382" text-anchor="middle" class="step-text">Consumer</text>
+      <text x="890" y="403" text-anchor="middle" class="step-sub">Processa PIX - atualiza cache</text>
+
+      <line x1="890" y1="350" x2="890" y2="300" class="arrow"/>
+
+      <rect x="830" y="220" width="120" height="72" rx="14" ry="14" class="step-box"/>
+      <text x="890" y="252" text-anchor="middle" class="step-text">Instituição</text>
+      <text x="890" y="273" text-anchor="middle" class="step-sub">Financeira</text>
+
+      <line x1="830" y1="256" x2="760" y2="256" class="arrow"/>
+
+      <rect x="80" y="350" width="420" height="80" rx="14" ry="14" fill="#eef2ff" stroke="#818cf8" stroke-width="2"/>
+      <text x="290" y="382" text-anchor="middle" class="step-text">Resumo</text>
+      <text x="290" y="403" text-anchor="middle" class="step-sub">API rápida + processamento assíncrono + retry resiliente</text>
     </svg>
   </div>
 </body>
