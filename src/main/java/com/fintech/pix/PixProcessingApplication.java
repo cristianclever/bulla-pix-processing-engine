@@ -8,6 +8,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @EnableScheduling
 public class PixProcessingApplication {
 
+    //#Teste
     public static void main(String[] args) {
         SpringApplication.run(PixProcessingApplication.class, args);
     }
