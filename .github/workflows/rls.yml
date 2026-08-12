@@ -1,0 +1,46 @@
+name: Release
+
+on:
+  pull_request:
+    types: [ closed ]
+
+env:
+  # full docker image name without version
+  IMAGE_NAME: us-docker.pkg.dev/project/repo/demo
+
+jobs:
+  release:
+    if: github.event.pull_request.merged == true && github.base_ref == 'main'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Set up Java
+        uses: actions/setup-java@v5
+        with:
+          java-version: '21'
+          distribution: 'corretto'
+
+      - name: Get current version
+        id: get_version
+        run: echo "::set-output name=current_version::$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)"
+
+      - name: Build Spring Boot Docker image and push it
+        run: |
+          mvn --batch-mode spring-boot:build-image -DskipTests -Dspring-boot.build-image.imageName=$IMAGE_NAME:${{ steps.get_version.outputs.current_version }}
+          gcloud auth configure-docker us-docker.pkg.dev --quiet
+          docker push $IMAGE_NAME:${{ steps.get_version.outputs.current_version }}
+
+      - name: Bump version
+        run: |
+          NEXT_VERSION=$((${{ steps.get_version.outputs.current_version }} + 1))
+          mvn versions:set -DnewVersion=$NEXT_VERSION -DgenerateBackupPoms=false
+
+      - name: Commit version
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git commit -am "Release: ${{ steps.get_version.outputs.current_version }}"
+          git push origin main
