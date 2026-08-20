@@ -13,6 +13,16 @@ import org.springframework.stereotype.Service;
 @Service
 @RequiredArgsConstructor
 @Slf4j
+/**
+ * Serviço de consulta para transações PIX.
+ *
+ * Responsabilidades:
+ * - Buscar status de transações usando cache Redis com prefixo 'pix:status:'.
+ * - Em caso de cache miss, consultar o repositório persistente e retornar os detalhes.
+ *
+ * Observações:
+ * - Os status armazenados no Redis usam os nomes do enum TransactionStatus.
+ */
 public class PixQueryService {
 
     private final PixTransactionRepository transactionRepository;
@@ -20,6 +30,17 @@ public class PixQueryService {
 
     private static final String REDIS_STATUS_PREFIX = "pix:status:";
 
+    /**
+     * Retorna o status da transação PIX identificado por transactionId.
+     * <p>
+     * Estratégia:
+     * - Verifica cache Redis (chave pix:status:{transactionId}) e devolve status em cache se presente (cache hit).
+     * - Em cache miss, busca a PixTransaction no repositório e retorna detalhes.
+     *
+     * @param transactionId identificador da transação
+     * @return PixResponseDto contendo transactionId, status e createdAt quando disponível
+     * @throws TransactionNotFoundException se a transação não for encontrada no repositório
+     */
     public PixResponseDto getTransactionStatus(String transactionId) {
         String cachedStatus = redisTemplate.opsForValue().get(REDIS_STATUS_PREFIX + transactionId);
 
