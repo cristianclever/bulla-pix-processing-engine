@@ -5,7 +5,10 @@ import com.fintech.pix.application.dto.PartnerIntegrationEvent;
 import com.fintech.pix.application.dto.PixRequestDto;
 import com.fintech.pix.application.dto.PixResponseDto;
 import com.fintech.pix.domain.exception.TransactionAlreadyExistsException;
-import com.fintech.pix.domain.model.*;
+import com.fintech.pix.domain.model.OutboxEvent;
+import com.fintech.pix.domain.model.OutboxStatus;
+import com.fintech.pix.domain.model.PixTransaction;
+import com.fintech.pix.domain.model.TransactionStatus;
 import com.fintech.pix.domain.repository.OutboxRepository;
 import com.fintech.pix.domain.repository.PixTransactionRepository;
 import lombok.RequiredArgsConstructor;
@@ -21,6 +24,18 @@ import java.time.OffsetDateTime;
 @Service
 @RequiredArgsConstructor
 @Slf4j
+/**
+ * Serviço responsável pela criação de transações PIX.
+ *
+ * Fluxo principal do método createTransaction:
+ * 1) Garante idempotência e trava atômica via Redis (setIfAbsent) com chave 'pix:status:{transactionId}'.
+ * 2) Persiste a entidade PixTransaction com status PROCESSING.
+ * 3) Cria um OutboxEvent (Transactional Outbox) para integração com parceiros.
+ * 4) Retorna imediatamente 202 (PIX em processamento) ao cliente.
+ *
+ * Comportamento transacional:
+ * - A operação é anotada com @Transactional; em caso de falha, a chave Redis é removida para evitar travas persistentes.
+ */
 public class PixTransactionService {
 
     private final PixTransactionRepository transactionRepository;
@@ -30,6 +45,18 @@ public class PixTransactionService {
 
     private static final String REDIS_STATUS_PREFIX = "pix:status:";
 
+    /**
+     * Cria uma nova transação PIX.
+     * <p>
+     * Detalhes:
+     * - Aplica idempotência usando Redis; se a chave já existir, lança TransactionAlreadyExistsException para retornar 409.
+     * - Persiste PixTransaction e registra um OutboxEvent com status PENDING.
+     * - Retorna PixResponseDto com status PROCESSING e createdAt atual.
+     *
+     * @param dto dados da solicitação de criação de transação
+     * @return PixResponseDto com o id da transação, status e timestamp de criação
+     * @throws TransactionAlreadyExistsException quando a transação já está sendo processada
+     */
     @Transactional
     @SneakyThrows
     public PixResponseDto createTransaction(PixRequestDto dto) {
